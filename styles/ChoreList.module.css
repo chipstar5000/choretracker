@@ -1,0 +1,29 @@
+.choreList {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+}
+
+.error {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.emptyList {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+  background-color: #f8f8f8;
+  border-radius: 8px;
+  border: 1px dashed #ccc;
+}

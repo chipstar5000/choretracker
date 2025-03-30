@@ -1,0 +1,135 @@
+.choreItem {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.choreItem:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.choreItem.completed {
+  opacity: 0.7;
+  background-color: #f9f9f9;
+}
+
+.choreHeader {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+}
+
+.checkboxContainer {
+  margin-right: 16px;
+}
+
+.checkbox {
+  display: none;
+}
+
+.checkboxLabel {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  position: relative;
+  cursor: pointer;
+}
+
+.checkbox:checked + .checkboxLabel::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #4CAF50;
+  font-weight: bold;
+}
+
+.choreName {
+  flex: 1;
+}
+
+.choreName h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.repeatBadge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background-color: #f0f0f0;
+  color: #666;
+  margin-left: 8px;
+}
+
+.expandButton {
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: #999;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.choreDetails {
+  padding: 0 16px 16px;
+  border-top: 1px solid #f0f0f0;
+  font-size: 14px;
+}
+
+.choreDetails p {
+  margin-top: 12px;
+  margin-bottom: 12px;
+  color: #555;
+}
+
+.assignedTo {
+  margin-top: 12px;
+}
+
+.assigneeList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.assigneeBadge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+}
+
+.checkmark {
+  margin-left: 4px;
+  font-weight: bold;
+}
+
+.choreActions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.deleteButton {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}

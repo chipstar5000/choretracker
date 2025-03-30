@@ -1,0 +1,42 @@
+{
+  "name": "choretracker",
+  "version": "1.0.0",
+  "description": "chore tracker web app for family chore tracking",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "vercel-build": "next build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chipstar5000/choretracker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/chipstar5000/choretracker/issues"
+  },
+  "homepage": "https://github.com/chipstar5000/choretracker#readme",
+  "dependencies": {
+    "better-sqlite3": "^11.9.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "next": "^15.2.4",
+    "pg": "^8.14.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "@vercel/node": "^5.1.14",
+    "eslint": "^9.23.0",
+    "nodemon": "^3.1.9",
+    "prettier": "^3.5.3"
+  }
+}
