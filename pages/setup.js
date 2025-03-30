@@ -5,22 +5,42 @@ import styles from '../styles/Home.module.css';
 export default function SetupPage() {
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   
   const initializeDb = async () => {
     setIsLoading(true);
     setStatus('Initializing database...');
+    setError(null);
     
     try {
-      const response = await fetch('/api/init-db', { method: 'POST' });
-      const data = await response.json();
+      const response = await fetch('/api/init-db', { 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Failed to parse JSON response:', jsonError);
+        throw new Error('The server returned an invalid response. This might indicate that the database connection failed.');
+      }
+      
+      if (!response.ok) {
+        throw new Error(data?.error || `Server responded with status ${response.status}`);
+      }
       
       if (data.success) {
         setStatus('✅ Database initialized successfully! You can now start using the application.');
       } else {
-        setStatus('❌ Error: ' + (data.error || 'Unknown error occurred'));
+        throw new Error(data.error || 'Unknown error occurred');
       }
     } catch (error) {
-      setStatus('❌ Error: ' + error.message);
+      console.error('Error during database initialization:', error);
+      setStatus('❌ Database initialization failed');
+      setError(error.message);
     } finally {
       setIsLoading(false);
     }
@@ -67,6 +87,22 @@ export default function SetupPage() {
               maxWidth: '500px'
             }}>
               {status}
+              
+              {error && (
+                <div style={{ 
+                  marginTop: '0.5rem', 
+                  padding: '0.5rem', 
+                  backgroundColor: '#fff0f0', 
+                  borderRadius: '0.25rem',
+                  fontSize: '0.9rem',
+                  color: '#d32f2f',
+                  textAlign: 'left',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word'
+                }}>
+                  {error}
+                </div>
+              )}
             </div>
           )}
           
@@ -82,6 +118,22 @@ export default function SetupPage() {
               </a>
             </div>
           )}
+          
+          <div style={{ 
+            marginTop: '3rem', 
+            fontSize: '0.9rem', 
+            color: '#666', 
+            maxWidth: '600px', 
+            textAlign: 'left' 
+          }}>
+            <h3>Troubleshooting</h3>
+            <ul style={{ textAlign: 'left' }}>
+              <li>Make sure your database connection string is correctly set in Vercel environment variables</li>
+              <li>For Neon databases, ensure the <code>USE_POSTGRES</code> environment variable is set to <code>true</code></li>
+              <li>Check that the database user has permissions to create tables</li>
+              <li>If using SQLite locally, ensure the data directory is writable</li>
+            </ul>
+          </div>
         </div>
       </main>
     </div>
