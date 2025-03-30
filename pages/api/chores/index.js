@@ -13,10 +13,13 @@ export default async function handler(req, res) {
 
 async function getChores(req, res) {
   const { memberId, showCompleted = 'false', timeframe = 'today' } = req.query;
+  const isPostgres = process.env.USE_POSTGRES === 'true';
   
   try {
+    console.log(`Fetching chores using ${isPostgres ? 'PostgreSQL' : 'SQLite'}`);
     let query;
     let params = [];
+    let paramCounter = 1; // For PostgreSQL numbered parameters
     
     // Base query to get chores with their assignments
     query = `
@@ -34,24 +37,41 @@ async function getChores(req, res) {
     
     // Filter by member ID if provided
     if (memberId) {
-      query += ` AND ca.family_member_id = ?`;
+      if (isPostgres) {
+        query += ` AND ca.family_member_id = $${paramCounter++}`;
+      } else {
+        query += ` AND ca.family_member_id = ?`;
+      }
       params.push(memberId);
     }
     
     // Filter by completion status
     if (showCompleted === 'false') {
-      query += ` AND ca.completed = 0`;
+      if (isPostgres) {
+        query += ` AND ca.completed = FALSE`;
+      } else {
+        query += ` AND ca.completed = 0`;
+      }
     }
     
-    // Filter by timeframe
-    if (timeframe === 'today') {
-      query += ` AND (date(c.due_date) = date('now') OR c.repeat_type = 'daily')`;
-    } else if (timeframe === 'week') {
-      query += ` AND (date(c.due_date) BETWEEN date('now') AND date('now', '+7 days') OR c.repeat_type IN ('daily', 'weekly'))`;
+    // Filter by timeframe - PostgreSQL and SQLite have different date functions
+    if (isPostgres) {
+      if (timeframe === 'today') {
+        query += ` AND (c.due_date::date = CURRENT_DATE OR c.repeat_type = 'daily')`;
+      } else if (timeframe === 'week') {
+        query += ` AND (c.due_date::date BETWEEN CURRENT_DATE AND (CURRENT_DATE + INTERVAL '7 days') OR c.repeat_type IN ('daily', 'weekly'))`;
+      }
+    } else {
+      if (timeframe === 'today') {
+        query += ` AND (date(c.due_date) = date('now') OR c.repeat_type = 'daily')`;
+      } else if (timeframe === 'week') {
+        query += ` AND (date(c.due_date) BETWEEN date('now') AND date('now', '+7 days') OR c.repeat_type IN ('daily', 'weekly'))`;
+      }
     }
     
     query += ` ORDER BY c.due_date ASC, c.id ASC`;
     
+    console.log('Executing query:', query);
     const result = await db.query(query, params);
     
     // Group results by chore
@@ -97,22 +117,54 @@ async function createChore(req, res) {
   const client = await db.getClient();
   
   try {
-    // SQLite doesn't support RETURNING, so we need to handle it differently
-    const choreResult = await client.query(
-      `INSERT INTO chores (name, details, due_date, repeat_type) 
-       VALUES (?, ?, ?, ?)`,
-      [name, details || '', dueDate, repeatType || 'one-time']
-    );
+    // Check if we're using PostgreSQL by looking at the presence of the query method
+    const isPostgres = process.env.USE_POSTGRES === 'true';
+    console.log(`Creating chore using ${isPostgres ? 'PostgreSQL' : 'SQLite'}`);
     
-    const choreId = choreResult.rows[0]?.id;
+    let choreId;
     
-    // Create assignments for each family member
-    for (const memberId of assignedTo) {
-      await client.query(
-        `INSERT INTO chore_assignments (chore_id, family_member_id) 
-         VALUES (?, ?)`,
-        [choreId, memberId]
+    if (isPostgres) {
+      // PostgreSQL version with RETURNING
+      const choreResult = await client.query(
+        `INSERT INTO chores (name, details, due_date, repeat_type) 
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [name, details || '', dueDate, repeatType || 'one-time']
       );
+      
+      choreId = choreResult.rows[0]?.id;
+      console.log(`Created chore with ID: ${choreId}`);
+      
+      // Create assignments for each family member
+      for (const memberId of assignedTo) {
+        await client.query(
+          `INSERT INTO chore_assignments (chore_id, family_member_id) 
+           VALUES ($1, $2)`,
+          [choreId, memberId]
+        );
+      }
+    } else {
+      // SQLite version
+      const choreResult = await client.query(
+        `INSERT INTO chores (name, details, due_date, repeat_type) 
+         VALUES (?, ?, ?, ?)`,
+        [name, details || '', dueDate, repeatType || 'one-time']
+      );
+      
+      choreId = choreResult.rows[0]?.id;
+      console.log(`Created chore with ID: ${choreId}`);
+      
+      // Create assignments for each family member
+      for (const memberId of assignedTo) {
+        await client.query(
+          `INSERT INTO chore_assignments (chore_id, family_member_id) 
+           VALUES (?, ?)`,
+          [choreId, memberId]
+        );
+      }
+    }
+    
+    if (!choreId) {
+      throw new Error('Failed to get ID of newly created chore');
     }
     
     res.status(201).json({ 
@@ -125,7 +177,7 @@ async function createChore(req, res) {
     });
   } catch (error) {
     console.error('Error creating chore:', error);
-    res.status(500).json({ error: 'Failed to create chore' });
+    res.status(500).json({ error: 'Failed to create chore: ' + error.message });
   } finally {
     client.release();
   }
