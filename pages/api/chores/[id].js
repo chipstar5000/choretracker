@@ -16,9 +16,12 @@ export default async function handler(req, res) {
 }
 
 async function getChore(req, res, id) {
+  const isPostgres = process.env.USE_POSTGRES === 'true';
+  
   try {
+    // Query using the appropriate parameter syntax
     const choreResult = await db.query(
-      'SELECT id, name, details, due_date, repeat_type, completed FROM chores WHERE id = ?',
+      `SELECT id, name, details, due_date, repeat_type, completed FROM chores WHERE id = ${isPostgres ? '$1' : '?'}`,
       [id]
     );
     
@@ -33,7 +36,7 @@ async function getChore(req, res, id) {
       `SELECT ca.family_member_id, fm.name, fm.color, ca.completed 
        FROM chore_assignments ca 
        JOIN family_members fm ON ca.family_member_id = fm.id 
-       WHERE ca.chore_id = ?`,
+       WHERE ca.chore_id = ${isPostgres ? '$1' : '?'}`,
       [id]
     );
     
@@ -53,18 +56,23 @@ async function getChore(req, res, id) {
     });
   } catch (error) {
     console.error('Error fetching chore:', error);
-    res.status(500).json({ error: 'Failed to fetch chore' });
+    res.status(500).json({ error: 'Failed to fetch chore: ' + error.message });
   }
 }
 
 async function updateChore(req, res, id) {
   const { name, details, dueDate, repeatType, completed, assignedTo } = req.body;
+  const isPostgres = process.env.USE_POSTGRES === 'true';
   
   const client = await db.getClient();
   
   try {
     // Check if chore exists
-    const checkResult = await client.query('SELECT id FROM chores WHERE id = ?', [id]);
+    const checkResult = await client.query(
+      `SELECT id FROM chores WHERE id = ${isPostgres ? '$1' : '?'}`, 
+      [id]
+    );
+    
     if (checkResult.rows.length === 0) {
       return res.status(404).json({ error: 'Chore not found' });
     }
@@ -73,36 +81,37 @@ async function updateChore(req, res, id) {
     if (name || details !== undefined || dueDate || repeatType || completed !== undefined) {
       let updateFields = [];
       let params = [];
+      let paramIndex = 1; // For PostgreSQL
       
       if (name) {
-        updateFields.push(`name = ?`);
+        updateFields.push(`name = ${isPostgres ? `$${paramIndex++}` : '?'}`);
         params.push(name);
       }
       
       if (details !== undefined) {
-        updateFields.push(`details = ?`);
+        updateFields.push(`details = ${isPostgres ? `$${paramIndex++}` : '?'}`);
         params.push(details);
       }
       
       if (dueDate) {
-        updateFields.push(`due_date = ?`);
+        updateFields.push(`due_date = ${isPostgres ? `$${paramIndex++}` : '?'}`);
         params.push(dueDate);
       }
       
       if (repeatType) {
-        updateFields.push(`repeat_type = ?`);
+        updateFields.push(`repeat_type = ${isPostgres ? `$${paramIndex++}` : '?'}`);
         params.push(repeatType);
       }
       
       if (completed !== undefined) {
-        updateFields.push(`completed = ?`);
-        params.push(completed ? 1 : 0);
+        updateFields.push(`completed = ${isPostgres ? `$${paramIndex++}` : '?'}`);
+        params.push(isPostgres ? completed : completed ? 1 : 0);
       }
       
       if (updateFields.length > 0) {
         params.push(id);
         await client.query(
-          `UPDATE chores SET ${updateFields.join(', ')} WHERE id = ?`,
+          `UPDATE chores SET ${updateFields.join(', ')} WHERE id = ${isPostgres ? `$${paramIndex}` : '?'}`,
           params
         );
       }
@@ -112,7 +121,7 @@ async function updateChore(req, res, id) {
     if (assignedTo && Array.isArray(assignedTo)) {
       // Get current assignments
       const currentAssignments = await client.query(
-        'SELECT family_member_id FROM chore_assignments WHERE chore_id = ?',
+        `SELECT family_member_id FROM chore_assignments WHERE chore_id = ${isPostgres ? '$1' : '?'}`,
         [id]
       );
       
@@ -125,7 +134,7 @@ async function updateChore(req, res, id) {
       // Add new assignments
       for (const memberId of toAdd) {
         await client.query(
-          'INSERT INTO chore_assignments (chore_id, family_member_id) VALUES (?, ?)',
+          `INSERT INTO chore_assignments (chore_id, family_member_id) VALUES (${isPostgres ? '$1, $2' : '?, ?'})`,
           [id, memberId]
         );
       }
@@ -133,7 +142,7 @@ async function updateChore(req, res, id) {
       // Remove old assignments
       for (const memberId of toRemove) {
         await client.query(
-          'DELETE FROM chore_assignments WHERE chore_id = ? AND family_member_id = ?',
+          `DELETE FROM chore_assignments WHERE chore_id = ${isPostgres ? '$1' : '?'} AND family_member_id = ${isPostgres ? '$2' : '?'}`,
           [id, memberId]
         );
       }
@@ -144,34 +153,45 @@ async function updateChore(req, res, id) {
     res.status(200).json(updatedChore);
   } catch (error) {
     console.error('Error updating chore:', error);
-    res.status(500).json({ error: 'Failed to update chore' });
+    res.status(500).json({ error: 'Failed to update chore: ' + error.message });
   } finally {
     client.release();
   }
 }
 
 async function deleteChore(req, res, id) {
+  const isPostgres = process.env.USE_POSTGRES === 'true';
+  
   try {
     // Check if chore exists
-    const checkResult = await db.query('SELECT id FROM chores WHERE id = ?', [id]);
+    const checkResult = await db.query(
+      `SELECT id FROM chores WHERE id = ${isPostgres ? '$1' : '?'}`,
+      [id]
+    );
+    
     if (checkResult.rows.length === 0) {
       return res.status(404).json({ error: 'Chore not found' });
     }
     
     // Delete chore (will cascade to assignments due to FK constraints)
-    await db.query('DELETE FROM chores WHERE id = ?', [id]);
+    await db.query(
+      `DELETE FROM chores WHERE id = ${isPostgres ? '$1' : '?'}`,
+      [id]
+    );
     
     res.status(204).end();
   } catch (error) {
     console.error('Error deleting chore:', error);
-    res.status(500).json({ error: 'Failed to delete chore' });
+    res.status(500).json({ error: 'Failed to delete chore: ' + error.message });
   }
 }
 
 // Helper function to get full chore data
 async function getChoreData(id) {
+  const isPostgres = process.env.USE_POSTGRES === 'true';
+  
   const choreResult = await db.query(
-    'SELECT id, name, details, due_date, repeat_type, completed FROM chores WHERE id = ?',
+    `SELECT id, name, details, due_date, repeat_type, completed FROM chores WHERE id = ${isPostgres ? '$1' : '?'}`,
     [id]
   );
   
@@ -186,7 +206,7 @@ async function getChoreData(id) {
     `SELECT ca.family_member_id, fm.name, fm.color, ca.completed 
      FROM chore_assignments ca 
      JOIN family_members fm ON ca.family_member_id = fm.id 
-     WHERE ca.chore_id = ?`,
+     WHERE ca.chore_id = ${isPostgres ? '$1' : '?'}`,
     [id]
   );
   

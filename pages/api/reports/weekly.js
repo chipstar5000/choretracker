@@ -2,6 +2,7 @@ import db from '../../../lib/db';
 
 export default async function handler(req, res) {
   const { memberId } = req.query;
+  const isPostgres = process.env.USE_POSTGRES === 'true';
   
   if (!memberId) {
     return res.status(400).json({ error: 'Member ID is required' });
@@ -10,7 +11,7 @@ export default async function handler(req, res) {
   try {
     // Get family member info
     const memberResult = await db.query(
-      'SELECT id, name, color FROM family_members WHERE id = ?',
+      `SELECT id, name, color FROM family_members WHERE id = ${isPostgres ? '$1' : '?'}`,
       [memberId]
     );
     
@@ -26,16 +27,28 @@ export default async function handler(req, res) {
     const formattedDate = oneWeekAgo.toISOString().split('T')[0];
     
     // Get chores assigned to this member in the last week
-    const choresResult = await db.query(
-      `SELECT c.id, c.name, c.details, c.due_date, c.repeat_type, 
-              ca.completed, ca.completed_at
-       FROM chores c
-       JOIN chore_assignments ca ON c.id = ca.chore_id
-       WHERE ca.family_member_id = ?
-       AND (date(c.due_date) >= date(?) OR c.repeat_type IN ('daily', 'weekly'))
-       ORDER BY c.due_date ASC`,
-      [memberId, formattedDate]
-    );
+    let query;
+    if (isPostgres) {
+      // PostgreSQL version
+      query = `SELECT c.id, c.name, c.details, c.due_date, c.repeat_type, 
+                ca.completed, ca.completed_at
+               FROM chores c
+               JOIN chore_assignments ca ON c.id = ca.chore_id
+               WHERE ca.family_member_id = $1
+               AND (c.due_date::date >= $2::date OR c.repeat_type IN ('daily', 'weekly'))
+               ORDER BY c.due_date ASC`;
+    } else {
+      // SQLite version
+      query = `SELECT c.id, c.name, c.details, c.due_date, c.repeat_type, 
+                ca.completed, ca.completed_at
+               FROM chores c
+               JOIN chore_assignments ca ON c.id = ca.chore_id
+               WHERE ca.family_member_id = ?
+               AND (date(c.due_date) >= date(?) OR c.repeat_type IN ('daily', 'weekly'))
+               ORDER BY c.due_date ASC`;
+    }
+    
+    const choresResult = await db.query(query, [memberId, formattedDate]);
     
     // Count completed and total chores
     const totalChores = choresResult.rows.length;
@@ -72,6 +85,6 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('Error generating weekly report:', error);
-    res.status(500).json({ error: 'Failed to generate weekly report' });
+    res.status(500).json({ error: 'Failed to generate weekly report: ' + error.message });
   }
 }
