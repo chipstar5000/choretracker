@@ -37,27 +37,43 @@ export default function ChoreList({ familyMember, timeframe = 'today', showCompl
   
   const handleCompleteChore = async (choreId, memberId, completed) => {
     try {
+      console.log(`Completing chore: choreId=${choreId}, memberId=${memberId}, completed=${completed}`);
+      
+      // Convert parameters to ensure they're in the expected format for the API
+      const bodyData = {
+        choreId: parseInt(choreId, 10),
+        memberId: parseInt(memberId, 10),
+        completed: completed // Boolean
+      };
+      
+      console.log('Request body:', bodyData);
+      
       const response = await fetch('/api/chores/complete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          choreId,
-          memberId,
-          completed
-        }),
+        body: JSON.stringify(bodyData),
       });
       
+      // Try to parse response JSON even if not OK
+      let responseData;
+      try {
+        responseData = await response.json();
+        console.log('Response data:', responseData);
+      } catch (jsonError) {
+        console.error('Failed to parse response JSON:', jsonError);
+      }
+      
       if (!response.ok) {
-        throw new Error('Failed to update chore status');
+        throw new Error(responseData?.error || 'Failed to update chore status');
       }
       
       // Refresh chores list
       fetchChores();
     } catch (err) {
       console.error('Error completing chore:', err);
-      setError('Failed to update chore. Please try again.');
+      setError(`Failed to update chore: ${err.message}`);
     }
   };
   
