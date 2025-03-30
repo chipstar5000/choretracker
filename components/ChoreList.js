@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import ChoreItem from './ChoreItem';
 import styles from '../styles/ChoreList.module.css';
 
-export default function ChoreList({ familyMember, timeframe = 'today', showCompleted = false }) {
+export default function ChoreList({ familyMember, timeframe = 'today', showCompleted = false, refreshTrigger = 0 }) {
   const [chores, setChores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -33,7 +33,7 @@ export default function ChoreList({ familyMember, timeframe = 'today', showCompl
     if (familyMember) {
       fetchChores();
     }
-  }, [familyMember, timeframe, showCompleted]);
+  }, [familyMember, timeframe, showCompleted, refreshTrigger]);
   
   const handleCompleteChore = async (choreId, memberId, completed) => {
     try {

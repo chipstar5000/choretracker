@@ -13,6 +13,7 @@ export default function Home() {
   const [showFamilyOverview, setShowFamilyOverview] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [timeframe, setTimeframe] = useState('today');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   const familyMembers = [
     { id: 1, name: 'Chip', color: 'blue' },
@@ -137,6 +138,7 @@ export default function Home() {
           familyMember={familyMember}
           timeframe={timeframe}
           showCompleted={showCompleted}
+          refreshTrigger={refreshTrigger}
         />
 
         <button 
@@ -151,6 +153,8 @@ export default function Home() {
         <AddChoreForm 
           onClose={() => setShowAddChoreForm(false)} 
           onChoreAdded={() => {
+            // Increment the refresh trigger to cause the chore list to refresh
+            setRefreshTrigger(prev => prev + 1);
             setShowAddChoreForm(false);
           }}
         />
